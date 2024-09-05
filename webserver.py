@@ -21,8 +21,8 @@ def headerHandling() -> int:
         return payloadByteLenght
     else:
         print("no payload lenght provided")
-        # sys.exit(0)
         return 0
+        #sys.exit(0)
 
 #socket + port
 def portSetup() -> tuple:
@@ -64,21 +64,19 @@ if __name__ == "__main__":
                 header += buffer.decode("ISO-8859-1")
                 if "\r\n\r\n" in header:
                     payloadByteLenght = headerHandling()
-                    if payloadByteLenght == len(payload):
-                        break
             elif len(payload) < payloadByteLenght:
                 payload += buffer.decode("ISO-8859-1")
-            else:
+            if len(payload) >= payloadByteLenght:
                 break
 
-        requestMethod = header.split("/") #there should be a bettere way to do this
+        requestMethod = header.split("/", 1)
         print("method: ", requestMethod[0].lstrip())
         if payload:
             print("payload: ", payload, "\n")
         else:
             print("no payload", "\n")
 
-        #send payload to client and close socket dediated to client 
+        #send payload to client and close socket dedicated to client 
         newSocket.sendall(response.encode("ISO-8859-1"))
         newSocket.close()
 
