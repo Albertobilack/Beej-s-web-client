@@ -1,0 +1,6 @@
+text/plain                  Plain text file
+text/html                   HTML file
+application/pdf             PDF file
+image/jpeg                  JPEG image
+image/gif                   GIF image
+application/octet-stream    Generic unclassified data

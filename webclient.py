@@ -17,7 +17,7 @@ if __name__ == "__main__":
     #payload = ""
     contentLenght = "Content Length: " + str(len(payload))
     contentType = "text/plain"
-    request = "GET /dsf HTTP/1.1\r\nHost: %s\r\n%s\r\n%s\r\nConnection: close\r\n\r\n%s" % (sys.argv[1], contentType, contentLenght, payload)
+    request = "GET /test2.html HTTP/1.1\r\nHost: %s\r\n%s\r\n%s\r\nConnection: close\r\n\r\n%s" % (sys.argv[1], contentType, contentLenght, payload)
 
     print(request)
 
