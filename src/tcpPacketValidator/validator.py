@@ -1,17 +1,6 @@
-#GOAL: 
-# 1. read tcp address file
-# 2. split line in two, source and dest address
-# 3. Functions to convert IP address to bytestrings
-# 4. Read tcp data file
-# 5. function to generate IP pseudo header bytes from the IP address in tcp address file, and the tcp lenght from the tcp data file
-# 6. build a new version of the TCP data that has the chedksum set to zero
-# 7. concatenate pseudo header and tcp data with zero checksum
-# 8. compute the checksum of the concatenation
-# 9. extract che checksum from the original data in tcp data
-# 10. compare the two checksum
+import os, re
 
-import os
-import re
+directory = os.path.abspath("tcp_data")
 
 def ipAddressToByte(address):
     bytestring = b''
@@ -21,7 +10,7 @@ def ipAddressToByte(address):
     
 
 def tcpPseudoHEader(file, tcpLenght):
-    path = os.path.join(os.path.abspath("."), "tcp_data", file)
+    path = os.path.join(directory, file)
     with open(path, "r") as fp:
         fileContect = fp.read()
         tcpAddress = fileContect.split()
@@ -33,7 +22,7 @@ def tcpPseudoHEader(file, tcpLenght):
 
 def tcpDataManipulation(file):
     #reading binary data
-    path = os.path.join(os.path.abspath("."), "tcp_data", file)
+    path = os.path.join(directory, file)
     with open(path, "rb") as fp:
         tcpData = fp.read()
         tcpLenght = len(tcpData)
@@ -45,8 +34,7 @@ def tcpDataManipulation(file):
 
 def computeChecksum(pseudoHeader, tcpData):
     data = pseudoHeader + tcpData
-    total = 0
-    offset = 0
+    total, offset = 0, 0
     while offset < len(data):
         word = int.from_bytes(data[offset:offset+ 2], "big")
         total += word
@@ -55,17 +43,22 @@ def computeChecksum(pseudoHeader, tcpData):
 
     return (~total) & 0xffff
 
-if __name__ == "__main__":
-
-    checksum, tcpLenght, tcpZeroChecksum = tcpDataManipulation("tcp_data_0.dat")
-    pseudoHeader = tcpPseudoHEader("tcp_addrs_0.txt", tcpLenght)
+def validateChecksum(addrfile, dataFile):
+    checksum, tcpLenght, tcpZeroChecksum = tcpDataManipulation(dataFile)
+    pseudoHeader = tcpPseudoHEader(addrfile, tcpLenght)
     checksumTwo = computeChecksum(pseudoHeader, tcpZeroChecksum)
     if int.from_bytes(checksum) == checksumTwo:
-        print("ok")
+        print("PASS", end = " ")
+    else:
+        print("FAIL", end= " ")
 
-    print(int.from_bytes(checksum), "\t", checksumTwo)
+    print(int.from_bytes(checksum), " ", checksumTwo)
 
+if __name__ == "__main__":
 
-    # for file in os.listdir(os.path.abspath("tcp_data")):
-    #         numbers = re.findall(r'\d+', file)
-    #         print(f"Numbers in {file}: {numbers}")
+    for file in os.listdir(directory):
+        if file.endswith(".txt"):
+            addrfile = file
+            dataFile = re.sub(r'_addrs_(\d+).txt', r'_data_\1.dat', file)
+            if os.path.exists(os.path.join(directory, dataFile)):
+                validateChecksum(addrfile, dataFile)
