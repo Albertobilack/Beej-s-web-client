@@ -18,8 +18,7 @@ def ipv4_to_value(ipv4_addr):
     ipv4Box = ipv4_addr.split(".")
     # for i in range(3):
     #     ipv4Box[i] = int(ipv4Box[i])
-    return (int(ipv4Box[3]) << 24) | (int(ipv4Box[2]) << 16) | (int(ipv4Box[1]) << 8) | int(ipv4Box[0])  
-
+    return ((int(ipv4Box[0]) << 24) | (int(ipv4Box[1]) << 16) | (int(ipv4Box[2]) << 8) | int(ipv4Box[3]))
 
 def value_to_ipv4(addr):
     """
@@ -36,15 +35,13 @@ def value_to_ipv4(addr):
     addr:   0x01020304 0b00000001000000100000001100000100 16909060
     return: "1.2.3.4"
     """
-    shift = 24
-    ipv4 = (addr >> shift) & 0xff
+    ipv4 = (addr >> 24) & 0xff
+    shift = 16
     while shift >= 0:
         ipv4 = ".".join([str(ipv4), str((addr >> shift) & 0xff)])
         shift -= 8
 
     return ipv4
-
-
 
 def get_subnet_mask_value(slash):
     """
@@ -69,8 +66,7 @@ def get_subnet_mask_value(slash):
     # return (1 << int(slash)) - 1
 
     slash = int(slash.split("/")[-1])
-    return (2**slash)-1
-
+    return ((2**slash)-1) << 32-int(slash)
 
 def ips_same_subnet(ip1, ip2, slash):
     """
@@ -98,13 +94,11 @@ def ips_same_subnet(ip1, ip2, slash):
     slash:  "/16"
     return: False
     """
-    slash = ~(get_subnet_mask_value(slash))
+    slash = (get_subnet_mask_value(slash))
     if (ipv4_to_value(ip1) & slash) == (ipv4_to_value(ip2) & slash):
         return True
     else:
         return False
-
-    
 
 def get_network(ip_value, netmask):
     """
@@ -162,26 +156,6 @@ def find_router_for_ip(routers, ip):
             return router
         
     return None
-    
-
-# Uncomment this code to have it run instead of the real main.
-# Be sure to comment it back out before you submit!
-"""
-def my_tests():
-    print("-------------------------------------")
-    print("This is the result of my custom tests")
-    print("-------------------------------------")
-
-    print(x)
-
-    # Add custom test code here
-"""
-
-## -------------------------------------------
-## Do not modify below this line
-##
-## But do read it so you know what it's doing!
-## -------------------------------------------
 
 def usage():
     print("usage: netfuncs.py infile.json", file=sys.stderr)
