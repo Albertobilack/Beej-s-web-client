@@ -57,16 +57,21 @@ def dijkstras_shortest_path(routers, srcIp, destIp):
     for madness.
     """
 
-    # distance = for any given node as a key, hold the distance from taht node to the starting node
-    # parent = for any given node (as a key) it lists the key for the node that leads back to the 
-    # starting node (along the shortes path)
+    parent  = buildDijkstraTree(routers, srcIp)
 
-    distance, parent = buildDijkstraTree(routers, srcIp)
+    currentNode = find_router_for_ip(routers, destIp)
+    startingNode = find_router_for_ip(routers, srcIp)
+    path = []
 
-    print("distance", distance)
-    print()
-    print("parent", parent)
-    print("---------------------------")
+    if startingNode == currentNode:
+        return path
+
+    while currentNode is not startingNode:
+        path.append(currentNode)
+        currentNode = parent[currentNode]
+    path.append(startingNode)
+    path.reverse()
+    return path
 
 def buildDijkstraTree(routers, srcIp):
     toVisit, distance, parent = initalization(routers, srcIp)
@@ -81,7 +86,7 @@ def buildDijkstraTree(routers, srcIp):
                     distance[neighbor] = distanceNeighbor
                     parent[neighbor] = currentNode
 
-    return distance, parent
+    return parent
 
 def findSmallerDistance(toVisit, distance):
     currentNode = ["", math.inf] #node and distance
@@ -115,7 +120,6 @@ def find_routes(routers, src_dest_pairs):
     for src_ip, dest_ip in src_dest_pairs:
         path = dijkstras_shortest_path(routers, src_ip, dest_ip)
         print(f"{src_ip:>15s} -> {dest_ip:<15s}  {repr(path)}")
-        break #da rimuovere
 
 def usage():
     print("usage: dijkstra.py infile.json", file=sys.stderr)
