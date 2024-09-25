@@ -1,0 +1,49 @@
+import select, socket, sys, signal
+
+def signalHandler(sig, frame) -> None:
+    print("SERVER SHUTDOWN")
+    sys.exit(0)
+
+def portSetup() -> tuple:
+    if len(sys.argv) == 2:
+        return '', int(sys.argv[1])
+    return '', 28333
+
+def serverSetup() -> socket:
+    global port
+    serverAddress = portSetup()
+    server = socket.socket()
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(serverAddress)
+    server.listen()
+    return server
+
+if __name__ == "__main__":
+
+    mainSocket = serverSetup()
+
+    print("server info:", mainSocket.getsockname(), "\n------------------------")
+
+    readSocketSet = {mainSocket}
+
+    # print(readSocketSet)
+    while True: 
+
+        readyToRead, _, _= select.select(readSocketSet, {}, {})
+
+        for s in readyToRead:
+
+            if s == mainSocket:
+                newConnection = s.accept() #tupla socket + return address
+                readSocketSet.append(newConnection)
+
+            else: #socket is a regular socket
+                data = s.recv(4096)
+
+                if not data:
+                    readSocketSet.remove(s)
+
+        signal.signal(signal.SIGINT, signalHandler)
+
+        
+    

@@ -1,8 +1,8 @@
 import socket, sys, signal, re, os
 
-def signalHandler(sig, frame) -> None:
-    print("SERVER SHUTDOWN")
-    sys.exit(0)
+# def signalHandler(sig, frame) -> None:
+#     print("SERVER SHUTDOWN")
+#     sys.exit(0)
 
 def payloadHandling() -> int:
     global payload, header
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         #print("test:", newSocket.getpeername())
 
         payloadByteLenght = -1
-        payload, header = "", ""
+        payload, header = "", ""    #azzeramento header e payload per prossima connessione
         while True:
             buffer = newSocket.recv(4096)
             if not buffer:  #client disconnection handling
@@ -154,6 +154,6 @@ if __name__ == "__main__":
         newSocket.sendall(response.encode("ISO-8859-1"))
         newSocket.close()
 
-        #shut down server if CTRL + C
-        signal.signal(signal.SIGINT, signalHandler)
+        #shut down server if CTRL + C. not working
+        # signal.signal(signal.SIGINT, signalHandler())
 
