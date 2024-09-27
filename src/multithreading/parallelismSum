@@ -1,0 +1,33 @@
+#IMPUT EXAMPLE : py parallelismSum [10,20] [1,5] [70,80] [27,92] [0,16]
+
+import threading, sys
+
+def sumRange(sumRange, i, result):
+    result[i] = sum(i for i in range(int(sumRange[0]), int(sumRange[1])+1))
+
+def main(argv):
+
+    argv = argv[1:]
+    threads = []
+    n = len(argv)
+    result = [0] * n
+
+    for i in range(n):
+        # box = argv[i].split(",")
+        # argument = list((box[0].strip("["), box[1].strip("]")))
+        
+        argument = list(((argv[i].split(",")[0]).strip("[") , (argv[i].split(",")[1]).strip("]")))
+
+        t = threading.Thread(target = sumRange, args=(argument, i, result))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+        
+    print(result)
+    print(f"total sum is: {sum(i for i in result)}")
+
+if __name__ == "__main__":
+
+    sys.exit(main(sys.argv))
