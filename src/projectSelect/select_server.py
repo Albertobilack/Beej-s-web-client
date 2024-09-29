@@ -13,9 +13,10 @@ contentTypes = {
         }
 
 def portSetup() -> tuple:
-    if len(sys.argv) == 2:
-        return '', int(sys.argv[1])
-    return '', 28333
+    # if len(sys.argv) == 2:
+    #     return '', int(sys.argv[1])
+    # return '', 28333
+    return '', int(sys.argv[1])
 
 def serverSetup() -> socket:
     serverAddress = portSetup()
