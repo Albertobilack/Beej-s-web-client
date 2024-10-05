@@ -1,4 +1,5 @@
 import sys, socket, select, re, json
+from multiUserChat.utility import formatMessage
 
 
 def serverSetup(port) -> socket:
@@ -9,28 +10,23 @@ def serverSetup(port) -> socket:
     server.listen()
     return server
 
-def receiveData(socket):
+#what if we receive multiple sentence at once?
+def retrivePacket(socket):
+    global buffer
 
-    buffer = socket.recv(4096)
-    if not buffer:
-        return False, None
-    return buffer, len(buffer)
+    payloadLength = int.from_bytes(buffer[socket][0][:2])
+    if len(buffer) >= payloadLength + 2: #2 è per i byte che comunicano lunghezza pacchetto
+        packet = buffer[2:payloadLength + 2]
+        buffer = buffer[payloadLength + 2:]
+        return packet.decode() #devo decoddare solo il pacchetto non tutto il buffer altrimenti sminchio lenght bytes degli altri pacchetti
+    
+    return False
 
 def newUserHandler(socket, payload):
+    global buffer
+
     payload = json.loads(payload)   #non necessario, dovrei ricevere direttamente il nome, getsione payload viene fatta prima
     buffer[socket]= '', payload["name"] #da controllare
-
-def formatMessage(type, socket, text):
-
-    match type:
-        case "chat":
-            message = {"type" : type, "nick": buffer[socket][1], "message": text }
-        case "join":
-            message = {"type": type, "nick": buffer[socket][1]}
-        case "leave":
-            message = {"type": type, "nick": buffer[socket][1]}
-
-    return message
 
 #da completare, bisogna aggiungere lendata nei primi 2 byte
 def broadcast(onlineUsers, message):
@@ -38,9 +34,9 @@ def broadcast(onlineUsers, message):
     for user in onlineUsers:
         user.sendall(message.encode()) 
 
-buffer = {} #dict socket - [buffer, nick]
+buffer = {}  # dictionary = socket - [buffer, nick]
 
-def run_server(port):
+def runServer   (port):
 
     mainSocket = serverSetup(port)
     readSocketSet = {mainSocket}
@@ -51,29 +47,28 @@ def run_server(port):
 
         for s in readyToRead:
 
-            if s == mainSocket:
+            if s == mainSocket: #new client
                 newConnection = s.accept() #tupla socket + return address
                 readSocketSet.add(newConnection[0])
 
-            else:
-                data, lenData = receiveData(s) #messaggio.decode
+            else: #client have data
+                buffer[s][0] += (socket.recv(4096))
 
-                if True: #sarebbe se è una prima connessione, lo controllo dal "data" guardando se è un hello
-                    newUserHandler(s, data) #non è propriamente data da inviare
-                    message = formatMessage("join", s)
-                    broadcast(readSocketSet, message)
-
-                if not data:
+                if not buffer[s][0]: #client disconnected
                     s.close()
                     readSocketSet.remove(s)
-                    message = formatMessage("leave", s)
-                    broadcast(readSocketSet, message)
+                    broadcast(readSocketSet, formatMessage("leave", buffer[s][1]))                    
 
-                else:
-                    #datahandling da definire
-                    text = "prova"
-                    message = formatMessage("chat", readSocketSet, text) #text è "data" inviato dallo user con socket "s"
-                    broadcast(readSocketSet, message)
+                #implementazione giusta sarebbe while retreive new packet, extract packet
+                while len(buffer[s][0] >= 1):
+                    packet = retrivePacket(s) #dovrei fare due funzioni getnextpacket e extractpacket
+                    if not packet:
+                        break
+                    packet = json.loads(packet)
+                    if packet["type"] == "chat":                     
+                        broadcast(readSocketSet, formatMessage(packet["type"], buffer[s][1], packet["message"]))
+                    else:
+                        broadcast(readSocketSet, formatMessage(packet["type"], buffer[s][1]))
 
 def usage():
     print("usage: server.py port", file=sys.stderr)
@@ -85,7 +80,7 @@ def main(argv):
         usage()
         return 1
 
-    run_server(port)
+    runServer(port)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
