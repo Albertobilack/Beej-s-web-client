@@ -1,4 +1,4 @@
-import sys, socket, select, re, json
+import sys, socket, select, json
 from utility import formatMessage
 
 
