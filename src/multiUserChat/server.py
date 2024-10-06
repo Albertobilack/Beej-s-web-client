@@ -10,75 +10,77 @@ def serverSetup(port) -> socket:
     server.listen()
     return server
 
-#what if we receive multiple sentence at once?
 def retrivePacket(socket):
     global buffer
 
     payloadLength = int.from_bytes(buffer[socket][0][:2])
-    if len(buffer[socket][0]) >= payloadLength + 2: #2 è per i byte che comunicano lunghezza pacchetto
+    if len(buffer[socket][0]) >= payloadLength + 2:
         packet = buffer[socket][0][2:payloadLength + 2]
         buffer[socket][0] = buffer[socket][0][payloadLength + 2:]
-        return packet.decode() #devo decoddare solo il pacchetto non tutto il buffer altrimenti sminchio lenght bytes degli altri pacchetti
-    
+        return packet.decode()
     return False
 
-def newUserHandler(socket):
+def packetHandling(socket, packet):
     global buffer
+
+    packet = json.loads(packet)
+    if packet["type"] == "hello":
+        buffer[socket][1] = packet["nick"]
+        broadcast(formatMessage("join", buffer[socket][1]))
+    elif packet["type"] == "chat":                     
+        broadcast(formatMessage(packet["type"], buffer[socket][1], packet["message"]))
+    else:
+        broadcast(formatMessage(packet["type"], buffer[socket][1]))
+
+def addNewUser(socket):
+    global buffer, readSocketSet
 
     newConnection, _ = socket.accept()
-    buffer[newConnection] = [b'', ""] #list buffer - string
+    buffer[newConnection] = [b'', ""]
+    readSocketSet.add(newConnection)
 
-    return newConnection
+def removeNewUser(s):
+    global buffer, readSocketSet
 
-#migliorare come escludere mainSocket, è una soluzione temporanea
-#escludo joiner quando joina, sender quando senda ecc
-def broadcast(onlineUsers, message, mainSocket): 
+    s.close()
+    readSocketSet.remove(s)
+    broadcast(formatMessage("leave", buffer[s][1]))
+    buffer.pop(s)
 
-    for user in onlineUsers:
-        if user != mainSocket:
+#si potrebbe escludere mittente e far stampare automaticamente messaggio al client stesso
+def broadcast(message):
+    global readSocketSet, mainSocket
+
+    for user in readSocketSet:
+        if user != mainSocket: #not best practice
             byteLen = int.to_bytes(len(message), length=2)
-            user.sendall(byteLen + message) 
+            user.sendall(byteLen + message)
 
 buffer = {}  #socket - [buffer, nick]
+mainSocket = None
+readSocketSet = set()
 
 def runServer(port):
-    global buffer
+    global buffer, mainSocket, readSocketSet
 
     mainSocket = serverSetup(port)
     readSocketSet = {mainSocket}
 
     while True:
-
         readyToRead, _, _= select.select(readSocketSet, {}, {})
-
         for s in readyToRead:
-
             if s == mainSocket:
-                readSocketSet.add(newUserHandler(s))
-
+                addNewUser(s)
             else:
                 buffer[s][0] += s.recv(4096)
-                
                 if not buffer[s][0]:
-                    s.close()
-                    readSocketSet.remove(s)
-                    broadcast(readSocketSet, formatMessage("leave", buffer[s][1]), mainSocket)
-                    buffer.pop(s)
-
-                else:#implementazione giusta sarebbe while retreive new packet, extract packet
+                    removeNewUser(s)
+                else:
                     while len(buffer[s][0]) > 1:
                         packet = retrivePacket(s)
                         if not packet:
                             break
-                        packet = json.loads(packet)
-                        if packet["type"] == "hello":
-                            buffer[s][1] = packet["nick"]
-                            broadcast(readSocketSet, formatMessage("join", buffer[s][1]), mainSocket)
-                        elif packet["type"] == "chat":                     
-                            broadcast(readSocketSet, formatMessage(packet["type"], buffer[s][1], packet["message"]), mainSocket)
-                        else:
-                            print("eccolo", readSocketSet) 
-                            broadcast(readSocketSet, formatMessage(packet["type"], buffer[s][1]), mainSocket)
+                        packetHandling(s, packet)
 
 def usage():
     print("usage: server.py port", file=sys.stderr)
