@@ -1,7 +1,6 @@
 import sys, socket, threading, json
 from utility import formatMessage
 from chatui import *
-import time
 
 def retrivePacket():
     global buffer
@@ -21,11 +20,11 @@ def printToUser(message):
 
     match message["type"]:
         case "chat":
-            print_message(f"{message["nick"]}: {message["message"]}")
+            print_message(f"{message['nick']}: {message['message']}")
         case "join":
-            print_message(f"*** {message["nick"]} has joined the chat")
+            print_message(f"*** {message['nick']} has joined the chat")
         case "leave":
-            print_message(f"*** {message["nick"]} has left the chat")
+            print_message(f"*** {message['nick']} has left the chat")
 
 def receiver(client):
     global buffer
@@ -33,15 +32,15 @@ def receiver(client):
     while True:
         payload = client.recv(4096)
         if not payload:
-            client.close()
-            return 0 #non andrebbe fatto in questo modo
+            print_message("error: server disconnected, insert /q to quit")
+            return 0
         buffer += payload
         while len(buffer) > 1:
             packet = retrivePacket()
             if not packet:
                 break
             printToUser(json.loads(packet))
-        
+
 def sender(nick, client):
 
     sendMessage(formatMessage("hello", nick), client)
@@ -50,21 +49,21 @@ def sender(nick, client):
         if message.startswith("/"): #si può miglioare
             command = message[1:]
             if command == "q":
-                print("Quitting the chat...")
+                print_message("Quitting the chat...")
                 client.close()
-                return 0 #NON CHIUDE IL RECEIVER, QUINDI LA SESSIONE RIMANE APERTA
+                return 0
             else:
                 print(f"Unknown command: {command}")
         else:
             sendMessage(formatMessage("chat", nick, message), client)
 
 def runThreads(nick, client):
-    communicationThread = threading.Thread(target = sender, args=(nick, client))
-    receiverThread = threading.Thread(target = receiver, args=(client,))
+    communicationThread = threading.Thread(target=sender, args=(nick, client))
+    receiverThread = threading.Thread(target=receiver, args=(client,), daemon=True)
     communicationThread.start()
     receiverThread.start()
-    communicationThread.join()
-    receiverThread.join() #cosa succede se solamente uno dei due ritorna ? il programma non si chiude perché aspetta l'altro
+
+    return communicationThread
 
 def runClient(nick, address):
 
@@ -72,14 +71,16 @@ def runClient(nick, address):
     client.connect(address)
 
     init_windows()
-    runThreads(nick, client)
+    senderThread = runThreads(nick, client)
+    senderThread.join()
     end_windows()
 
 def usage():
-    
+
     print("usage: client.py nickname ipAddress port", file=sys.stderr)
 
 buffer = b''
+# stop_event = threading.Event()
 
 def main(argv):
     try:
